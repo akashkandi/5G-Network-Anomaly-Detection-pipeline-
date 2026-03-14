@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: 5g-anomaly-config
+  namespace: default
+  labels:
+    app: 5g-anomaly-detection
+    component: config
+data:
+  # ── Model Configuration ─────────────────────────────────────────────────────
+  MODEL_DIR: "/app/outputs/models"
+  WINDOW_SIZE: "30"
+  DEFAULT_THRESHOLD: "0.5"
+
+  # ── API Configuration ───────────────────────────────────────────────────────
+  API_WORKERS: "2"
+  LOG_LEVEL: "info"
+  MAX_REQUEST_SIZE_MB: "10"
+
+  # ── Model Parameters ────────────────────────────────────────────────────────
+  LSTM_HIDDEN_SIZE: "128"
+  LSTM_NUM_LAYERS: "2"
+  LSTM_DROPOUT: "0.3"
+
+  TRANSFORMER_D_MODEL: "64"
+  TRANSFORMER_NHEAD: "4"
+  TRANSFORMER_NUM_LAYERS: "2"
+
+  # ── Metrics ─────────────────────────────────────────────────────────────────
+  METRICS_EXPORT_INTERVAL: "30"
+
+  # ── app.conf for nginx (if deployed with nginx sidecar) ───────────────────
+  nginx.conf: |
+    server {
+        listen 80;
+        location / {
+            proxy_pass http://localhost:8000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_read_timeout 60s;
+        }
+        location /health {
+            proxy_pass http://localhost:8000/health;
+            access_log off;
+        }
+    }

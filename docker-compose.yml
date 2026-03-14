@@ -1,0 +1,71 @@
+version: "3.9"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 5G Network Anomaly Detection — Local Development Stack
+# ──────────────────────────────────────────────────────────────────────────────
+# Usage:
+#   docker-compose up --build           # Start all services
+#   docker-compose up --build api       # Start API only
+#   docker-compose down                 # Stop all services
+#   docker-compose down -v              # Stop and remove volumes
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── FastAPI Inference Service ────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: 5g-anomaly-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./outputs:/app/outputs          # Mount trained models + outputs
+      - ./mlruns:/app/mlruns            # MLflow artefacts
+    environment:
+      - MODEL_DIR=/app/outputs/models
+      - PYTHONUNBUFFERED=1
+      - OMP_NUM_THREADS=4
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+
+  # ── MLflow Tracking UI ────────────────────────────────────────────────────────
+  mlflow:
+    image: python:3.11-slim
+    container_name: 5g-mlflow-ui
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlruns
+    command: >
+      bash -c "pip install mlflow --quiet &&
+               mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri /mlruns"
+    restart: unless-stopped
+
+  # ── Nginx reverse proxy (optional) ───────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: 5g-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+    profiles:
+      - production  # Only started with: docker-compose --profile production up
+
+volumes:
+  outputs:
+  mlruns:

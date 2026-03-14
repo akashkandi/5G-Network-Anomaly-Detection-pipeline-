@@ -434,7 +434,3 @@ MLFLOW_TRACKING_URI=http://my-mlflow-server:5000 python scripts/run_pipeline.py
 | matplotlib / seaborn | 3.9.2 / 0.13.2 | Visualisation                 |
 
 ---
-
-## License
-
-MIT License — see LICENSE file for details.
